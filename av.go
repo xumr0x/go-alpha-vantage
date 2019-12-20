@@ -22,9 +22,9 @@ const (
 	queryEndpoint   = "function"
 	queryInterval   = "interval"
 
-	valueCompact                  = "compact"
-	valueJson                     = "csv"
-	valueDigitcalCurrencyEndpoint = "DIGITAL_CURRENCY_INTRADAY"
+	valueCompact                 = "compact"
+	valueJson                    = "csv"
+	valueDigitalCurrencyEndpoint = "DIGITAL_CURRENCY_INTRADAY"
 
 	pathQuery = "query"
 
@@ -42,6 +42,21 @@ type avConnection struct {
 	host   string
 }
 
+type rateLimitedAVConnection struct {
+	conn *avConnection
+	rl   *RateLimiter
+}
+
+func (rlc *rateLimitedAVConnection) Request(endpoint *url.URL) (*http.Response, error) {
+	var res *http.Response
+	var err error
+
+	err = rlc.rl.Do(func() {
+		res, err = rlc.conn.Request(endpoint)
+	})
+	return res, err
+}
+
 // NewConnectionHost creates a new connection at the default Alpha Vantage host
 func NewConnection() Connection {
 	return NewConnectionHost(HostDefault)
@@ -55,6 +70,21 @@ func NewConnectionHost(host string) Connection {
 	return &avConnection{
 		client: client,
 		host:   host,
+	}
+}
+
+// NewConnectionRateLimited creates a new connection at the default Alpha Vantage host
+// with a given RateLimiter.
+func NewConnectionRateLimited(rl *RateLimiter) Connection {
+	c := &http.Client{
+		Timeout: requestTimeout,
+	}
+	return &rateLimitedAVConnection{
+		conn: &avConnection{
+			client: c,
+			host:   HostDefault,
+		},
+		rl: rl,
 	}
 }
 
@@ -82,6 +112,14 @@ func NewClientConnection(apiKey string, connection Connection) *Client {
 	return &Client{
 		conn:   connection,
 		apiKey: apiKey,
+	}
+}
+
+// NewClientRateLimited creates a Client with a rate limit.
+func NewClientRateLimited(apiKey string, dayLimit int, secondLimit int) *Client {
+	return &Client{
+		apiKey: apiKey,
+		conn:   NewConnectionRateLimited(NewRateLimiter(dayLimit, secondLimit)),
 	}
 }
 
@@ -142,7 +180,7 @@ func (c *Client) StockTimeSeries(timeSeries TimeSeries, symbol string) ([]*TimeS
 // Data is returned from past to present.
 func (c *Client) DigitalCurrency(digital, physical string) ([]*DigitalCurrencySeriesValue, error) {
 	endpoint := c.buildRequestPath(map[string]string{
-		queryEndpoint: valueDigitcalCurrencyEndpoint,
+		queryEndpoint: valueDigitalCurrencyEndpoint,
 		querySymbol:   digital,
 		queryMarket:   physical,
 	})
