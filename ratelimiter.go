@@ -2,6 +2,7 @@ package av
 
 import (
 	"math"
+	"net/http"
 	"sync/atomic"
 	"time"
 
@@ -71,9 +72,9 @@ func (l *RateLimiter) init() {
 //
 // It will delays execution by 50ms steps if the per-second
 // limit has been reached.
-func (l *RateLimiter) Do(f func()) error {
+func (l *RateLimiter) Do(f func() (*http.Response, error)) (*http.Response, error) {
 	if atomic.LoadInt32(&l.dayCount) == l.dayLimit {
-		return ErrDailyLimitReached
+		return nil, ErrDailyLimitReached
 	}
 
 	// Delay until the count is reset.
@@ -82,9 +83,9 @@ func (l *RateLimiter) Do(f func()) error {
 	}
 
 	// Execute function and increment count.
-	f()
+	res, err := f()
 	atomic.AddInt32(&l.secCount, 1)
 	atomic.AddInt32(&l.dayCount, 1)
 
-	return nil
+	return res, err
 }
