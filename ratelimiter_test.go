@@ -1,6 +1,7 @@
 package av
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -55,7 +56,7 @@ func TestRateLimiter_Do(t *testing.T) {
 			}()
 
 			for i := 0; i < tt.calls; i++ {
-				if err := rl.Do(func() {}); err != nil {
+				if err, _ := rl.Do(func() (*http.Response, error) { return nil, nil }); err != nil {
 					if !reflect.DeepEqual(err, tt.err) {
 						t.Errorf("unexpected error: %+v", err)
 						return

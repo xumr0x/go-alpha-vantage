@@ -1,12 +1,13 @@
 package av
 
 import (
+	"context"
 	"net/http"
 	"testing"
 )
 
 func TestNewClient(t *testing.T) {
-	if NewClient(testApiKey) == nil {
+	if NewClient(WithAPIKey(testApiKey)) == nil {
 		t.Error("got nil client")
 	}
 }
@@ -20,9 +21,9 @@ func TestClient_StockTimeSeries_buildsUrl(t *testing.T) {
 		StatusCode: http.StatusOK,
 	}
 	conn := NewResponseConnection(res)
-	client := NewClientConnection(testApiKey, conn)
+	client := NewClient(WithAPIKey(testApiKey), WithConnection(conn))
 
-	client.StockTimeSeries(TimeSeriesDaily, "TEST")
+	_, _ = client.StockTimeSeries(context.Background(), TimeSeriesDaily, "TEST")
 
 	if conn.endpoint.String() != expected {
 		t.Errorf("unexpected url, want %s got %s", expected, conn.endpoint.String())
@@ -35,9 +36,9 @@ func TestClient_StockTimeSeries_getsResults(t *testing.T) {
 		StatusCode: http.StatusOK,
 	}
 	conn := NewResponseConnection(res)
-	client := NewClientConnection(testApiKey, conn)
+	client := NewClient(WithAPIKey(testApiKey), WithConnection(conn))
 
-	result, err := client.StockTimeSeries(TimeSeriesDaily, "TEST")
+	result, err := client.StockTimeSeries(context.Background(), TimeSeriesDaily, "TEST")
 	if err != nil {
 		t.Fatalf("unexpected error, got %v", err)
 	}
