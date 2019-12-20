@@ -1,6 +1,7 @@
 package av
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"time"
@@ -33,7 +34,7 @@ const (
 // Connection is an interface that requests data from a server
 type Connection interface {
 	// Request creates an http Response from the given endpoint URL
-	Request(endpoint *url.URL) (*http.Response, error)
+	Request(ctx context.Context, endpoint *url.URL) (*http.Response, error)
 }
 
 type avConnection struct {
@@ -75,13 +76,18 @@ func (conn *avConnection) RateLimiter() *RateLimiter {
 }
 
 // Request will make an HTTP GET request for the given endpoint from Alpha Vantage
-func (conn *avConnection) Request(endpoint *url.URL) (*http.Response, error) {
+func (conn *avConnection) Request(ctx context.Context, endpoint *url.URL) (*http.Response, error) {
 	return conn.RateLimiter().Do(func() (*http.Response, error) {
 		endpoint.Scheme = schemeHttps
 		endpoint.Host = conn.Host()
 		targetUrl := endpoint.String()
 
-		return conn.Client().Get(targetUrl)
+		req, err := http.NewRequest(http.MethodGet, targetUrl, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		return conn.Client().Do(req.WithContext(ctx))
 	})
 }
 
@@ -138,13 +144,13 @@ func (c *Client) buildRequestPath(params map[string]string) *url.URL {
 
 // StockTimeSeriesIntraday queries a stock symbols statistics throughout the day.
 // Data is returned from past to present.
-func (c *Client) StockTimeSeriesIntraday(timeInterval TimeInterval, symbol string) ([]*TimeSeriesValue, error) {
+func (c *Client) StockTimeSeriesIntraday(ctx context.Context, timeInterval TimeInterval, symbol string) ([]*TimeSeriesValue, error) {
 	endpoint := c.buildRequestPath(map[string]string{
 		queryEndpoint: timeSeriesIntraday.keyName(),
 		queryInterval: timeInterval.keyName(),
 		querySymbol:   symbol,
 	})
-	response, err := c.Conn().Request(endpoint)
+	response, err := c.Conn().Request(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +160,12 @@ func (c *Client) StockTimeSeriesIntraday(timeInterval TimeInterval, symbol strin
 
 // StockTimeSeries queries a stock symbols statistics for a given time frame.
 // Data is returned from past to present.
-func (c *Client) StockTimeSeries(timeSeries TimeSeries, symbol string) ([]*TimeSeriesValue, error) {
+func (c *Client) StockTimeSeries(ctx context.Context, timeSeries TimeSeries, symbol string) ([]*TimeSeriesValue, error) {
 	endpoint := c.buildRequestPath(map[string]string{
 		queryEndpoint: timeSeries.keyName(),
 		querySymbol:   symbol,
 	})
-	response, err := c.Conn().Request(endpoint)
+	response, err := c.Conn().Request(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -169,13 +175,13 @@ func (c *Client) StockTimeSeries(timeSeries TimeSeries, symbol string) ([]*TimeS
 
 // DigitalCurrency queries statistics of a digital currency in terms of a physical currency throughout the day.
 // Data is returned from past to present.
-func (c *Client) DigitalCurrency(digital, physical string) ([]*DigitalCurrencySeriesValue, error) {
+func (c *Client) DigitalCurrency(ctx context.Context, digital string, physical string) ([]*DigitalCurrencySeriesValue, error) {
 	endpoint := c.buildRequestPath(map[string]string{
 		queryEndpoint: valueDigitalCurrencyEndpoint,
 		querySymbol:   digital,
 		queryMarket:   physical,
 	})
-	response, err := c.Conn().Request(endpoint)
+	response, err := c.Conn().Request(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}

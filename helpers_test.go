@@ -2,6 +2,7 @@ package av
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/url"
 )
@@ -19,7 +20,7 @@ func NewResponseConnection(res *http.Response) *responseConnection {
 	return &responseConnection{response: res}
 }
 
-func (c *responseConnection) Request(endpoint *url.URL) (*http.Response, error) {
+func (c *responseConnection) Request(ctx context.Context, endpoint *url.URL) (*http.Response, error) {
 	c.endpoint = endpoint
 	return c.response, nil
 }
@@ -33,7 +34,7 @@ func NewErrorConnection(err error) *errorConnection {
 	return &errorConnection{err: err}
 }
 
-func (c *errorConnection) Request(endpoint *url.URL) (*http.Response, error) {
+func (c *errorConnection) Request(ctx context.Context, endpoint *url.URL) (*http.Response, error) {
 	c.endpoint = endpoint
 	return nil, c.err
 }
