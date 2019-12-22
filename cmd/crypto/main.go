@@ -2,13 +2,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/cmckee-dev/go-alpha-vantage"
+	av "github.com/xumr0x/go-alpha-vantage"
 )
 
 const (
@@ -23,7 +24,7 @@ var (
 
 func main() {
 	flag.Parse()
-	client := av.NewClient(*apiKey)
+	client := av.NewClient(av.WithAPIKey(*apiKey))
 	fmt.Printf("querying price in %s...\n", *physicalCurrency)
 
 	wg := &sync.WaitGroup{}
@@ -40,7 +41,7 @@ func main() {
 }
 
 func queryCrypto(client *av.Client, digital, physical string) {
-	res, err := client.DigitalCurrency(digital, physical)
+	res, err := client.DigitalCurrency(context.Background(), digital, physical)
 	if err != nil {
 		fmt.Printf("%s error: %v\n", digital, err)
 		return

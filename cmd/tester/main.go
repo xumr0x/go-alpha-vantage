@@ -1,33 +1,28 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"sync"
 
-	"github.com/cmckee-dev/go-alpha-vantage"
+	av "github.com/xumr0x/go-alpha-vantage"
 )
 
 var (
-	apiKey           = flag.String("apikey", "", "api key for alpha vantage")
-	symbol           = flag.String("symbol", "GOOGL", "symbol to list")
-	cryptoSymbol     = flag.String("crypto", "ETH", "crypto-currency to query")
-	physicalCurrency = flag.String("dollars", "USD", "physical currency to query value of crypto")
+	apiKey = flag.String("apikey", "", "api key for alpha vantage")
+	symbol = flag.String("symbol", "GOOGL", "symbol to list")
+	//cryptoSymbol     = flag.String("crypto", "ETH", "crypto-currency to query")
+	//physicalCurrency = flag.String("dollars", "USD", "physical currency to query value of crypto")
 )
 
 func main() {
 	flag.Parse()
 
-	client := av.NewClient(*apiKey)
+	client := av.NewClient(av.WithAPIKey(*apiKey))
 
 	wg := &sync.WaitGroup{}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		queryCrypto(client, *cryptoSymbol, *physicalCurrency)
-	}()
 
 	for interval := av.TimeIntervalOneMinute; interval <= av.TimeIntervalSixtyMinute; interval++ {
 		wg.Add(1)
@@ -49,7 +44,7 @@ func main() {
 }
 
 func queryTimeSeries(client *av.Client, symbol string, series av.TimeSeries) {
-	res, err := client.StockTimeSeries(series, symbol)
+	res, err := client.StockTimeSeries(context.Background(), series, symbol)
 	if err != nil {
 		ErrorF("error loading series %s: %v", series, err)
 		return
@@ -58,7 +53,7 @@ func queryTimeSeries(client *av.Client, symbol string, series av.TimeSeries) {
 }
 
 func queryInterval(client *av.Client, symbol string, timeInterval av.TimeInterval) {
-	res, err := client.StockTimeSeriesIntraday(timeInterval, symbol)
+	res, err := client.StockTimeSeriesIntraday(context.Background(), timeInterval, symbol)
 	if err != nil {
 		ErrorF("error loading intraday series %s: %v", timeInterval, err)
 		return
@@ -67,7 +62,7 @@ func queryInterval(client *av.Client, symbol string, timeInterval av.TimeInterva
 }
 
 func queryCrypto(client *av.Client, digital, physical string) {
-	res, err := client.DigitalCurrency(digital, physical)
+	res, err := client.DigitalCurrency(context.Background(), digital, physical)
 	if err != nil {
 		ErrorF("error loading crypto: %s => %s: %v", digital, physical, err)
 		return
